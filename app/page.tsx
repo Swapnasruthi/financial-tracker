@@ -340,8 +340,8 @@ export default function HomePage() {
                   {filteredTransactions.length === 0 && (
                   <div className="text-center py-8 text-muted-foreground">
                     <div className="text-4xl mb-2">📊</div>
-                    <div>No transactions yet.</div>
-                    <div className="text-sm">Add your first transaction to get started!</div>
+                    <div>{categoryFilter ? `No transactions in ${getCategoryById(categoryFilter)?.name || 'this category'}` : 'No transactions yet.'}</div>
+                    <div className="text-sm">{categoryFilter ? 'Try selecting a different category or add a transaction with this category.' : 'Add your first transaction to get started!'}</div>
                   </div>
                 )}
                 {filteredTransactions.map(t => {

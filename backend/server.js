@@ -45,7 +45,7 @@ app.get('/api/transactions', async (req, res) => {
 // POST new transaction
 app.post('/api/transactions', async (req, res) => {
   try {
-    const { amount, date, description, type } = req.body;
+    const { amount, date, description, type, category } = req.body;
     
     // Validation
     if (!amount || !date || !description || !type) {
@@ -61,6 +61,7 @@ app.post('/api/transactions', async (req, res) => {
       date,
       description,
       type,
+      category: category || undefined,
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -82,8 +83,10 @@ app.put('/api/transactions', async (req, res) => {
       return res.status(400).json({ error: 'Transaction ID is required' });
     }
     
+    // Ensure category is handled properly
     const updateData = {
       ...update,
+      category: update.category || undefined,
       updatedAt: new Date()
     };
     
