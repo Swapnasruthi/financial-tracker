@@ -10,6 +10,12 @@ Express.js backend server for the Personal Finance Visualizer application.
 - Input validation and error handling
 - Health check endpoint
 
+
+
+backend is live on render -- https://financial-tracker-0hqo.onrender.com
+frontend is live on vercel -- https://financial-tracker-cwuq.vercel.app/
+
+
 ## Setup
 
 1. Install dependencies:

@@ -9,6 +9,8 @@ import { Transaction } from '@/types/transaction';
 import { transactionApi } from '@/lib/api';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Edit, Trash2, Plus, TrendingUp, TrendingDown } from 'lucide-react';
+import { CategorySelector } from '@/components/ui/category-selector';
+import { getCategoryById, predefinedCategories } from '@/lib/categories';
 
 function getMonthlyExpenses(transactions: Transaction[]) {
   const monthly: { [month: string]: number } = {};
@@ -35,14 +37,38 @@ function getTransactionStats(transactions: Transaction[]) {
   return { totalIncome, totalExpenses, balance };
 }
 
+function getCategoryStats(transactions: Transaction[]) {
+  const categoryTotals: { [categoryId: string]: number } = {};
+  
+  transactions.forEach(transaction => {
+    if (transaction.category) {
+      categoryTotals[transaction.category] = (categoryTotals[transaction.category] || 0) + transaction.amount;
+    }
+  });
+  
+  return Object.entries(categoryTotals)
+    .map(([categoryId, total]) => {
+      const category = getCategoryById(categoryId);
+      return {
+        categoryId,
+        name: category?.name || 'Unknown',
+        icon: category?.icon || '📝',
+        color: category?.color || '#6b7280',
+        total
+      };
+    })
+    .sort((a, b) => b.total - a.total);
+}
+
 export default function HomePage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [open, setOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
-  const [form, setForm] = useState({ amount: '', date: '', description: '', type: 'expense' });
+  const [form, setForm] = useState({ amount: '', date: '', description: '', type: 'expense' as 'expense' | 'income', category: '' });
   const [formError, setFormError] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<string>('');
 
   // Fetch transactions
   const fetchTransactions = async () => {
@@ -64,7 +90,7 @@ export default function HomePage() {
   }, []);
 
   const resetForm = () => {
-    setForm({ amount: '', date: '', description: '', type: 'expense' });
+    setForm({ amount: '', date: '', description: '', type: 'expense' as 'expense' | 'income', category: '' });
     setFormError('');
     setEditingTransaction(null);
   };
@@ -90,7 +116,8 @@ export default function HomePage() {
           amount: Number(form.amount),
           date: form.date,
           description: form.description,
-          type: form.type as 'expense' | 'income'
+          type: form.type as 'expense' | 'income',
+          category: form.category || undefined
         });
         setTransactions(transactions.map(t => 
           t._id === editingTransaction._id ? updatedTransaction : t
@@ -101,7 +128,8 @@ export default function HomePage() {
           amount: Number(form.amount),
           date: form.date,
           description: form.description,
-          type: form.type as 'expense' | 'income'
+          type: form.type as 'expense' | 'income',
+          category: form.category || undefined
         });
         setTransactions([newTransaction, ...transactions]);
       }
@@ -120,7 +148,8 @@ export default function HomePage() {
       amount: transaction.amount.toString(),
       date: transaction.date,
       description: transaction.description,
-      type: transaction.type
+      type: transaction.type,
+      category: transaction.category || ''
     });
     setOpen(true);
   };
@@ -135,7 +164,12 @@ export default function HomePage() {
     }
   };
 
+  const filteredTransactions = categoryFilter 
+    ? transactions.filter(t => t.category === categoryFilter)
+    : transactions;
+  
   const stats = getTransactionStats(transactions);
+  const categoryStats = getCategoryStats(transactions);
 
   if (loading) {
     return (
@@ -258,11 +292,19 @@ export default function HomePage() {
                         <select 
                           className="w-full border rounded-md p-2 bg-background" 
                           value={form.type} 
-                          onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
+                          onChange={e => setForm(f => ({ ...f, type: e.target.value as 'expense' | 'income' }))}
                         >
                           <option value="expense">Expense</option>
                           <option value="income">Income</option>
                         </select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Category</label>
+                        <CategorySelector
+                          value={form.category}
+                          onChange={(categoryId) => setForm(f => ({ ...f, category: categoryId }))}
+                          type={form.type}
+                        />
                       </div>
                       {formError && (
                         <div className="text-red-500 text-sm bg-red-50 p-2 rounded">
@@ -278,43 +320,71 @@ export default function HomePage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {transactions.length === 0 && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium text-gray-600">Filter by category:</label>
+                  <select 
+                    className="border rounded-md p-2 bg-background text-sm"
+                    value={categoryFilter}
+                    onChange={(e) => setCategoryFilter(e.target.value)}
+                  >
+                    <option value="">All categories</option>
+                    {predefinedCategories.map(category => (
+                      <option key={category.id} value={category.id}>
+                        {category.icon} {category.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-3">
+                  {filteredTransactions.length === 0 && (
                   <div className="text-center py-8 text-muted-foreground">
                     <div className="text-4xl mb-2">📊</div>
                     <div>No transactions yet.</div>
                     <div className="text-sm">Add your first transaction to get started!</div>
                   </div>
                 )}
-                {transactions.map(t => (
-                  <div key={t._id} className="flex items-center justify-between border rounded-lg p-4 bg-white hover:shadow-sm transition-shadow">
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-gray-900 truncate">{t.description}</div>
-                      <div className="text-sm text-gray-500">{t.date} • {t.type}</div>
+                {filteredTransactions.map(t => {
+                  const category = t.category ? getCategoryById(t.category) : undefined;
+                  return (
+                    <div key={t._id} className="flex items-center justify-between border rounded-lg p-4 bg-white hover:shadow-sm transition-shadow">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <div className="font-medium text-gray-900 truncate">{t.description}</div>
+                          {category && (
+                            <span className="text-sm bg-gray-100 text-gray-600 px-2 py-1 rounded-full flex items-center gap-1">
+                              <span>{category.icon}</span>
+                              <span>{category.name}</span>
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-sm text-gray-500">{t.date} • {t.type}</div>
+                      </div>
+                      <div className="flex items-center gap-3 ml-4">
+                        <span className={`font-semibold ${t.type === 'expense' ? 'text-red-600' : 'text-green-600'}`}>
+                          {t.type === 'expense' ? '-' : '+'}${t.amount.toFixed(2)}
+                        </span>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => handleEdit(t)}
+                          className="text-xs"
+                        >
+                          <Edit className="h-3 w-3" />
+                        </Button>
+                        <Button 
+                          variant="destructive" 
+                          size="sm" 
+                          onClick={() => handleDelete(t._id!)}
+                          className="text-xs"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-3 ml-4">
-                      <span className={`font-semibold ${t.type === 'expense' ? 'text-red-600' : 'text-green-600'}`}>
-                        {t.type === 'expense' ? '-' : '+'}${t.amount.toFixed(2)}
-                      </span>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => handleEdit(t)}
-                        className="text-xs"
-                      >
-                        <Edit className="h-3 w-3" />
-                      </Button>
-                      <Button 
-                        variant="destructive" 
-                        size="sm" 
-                        onClick={() => handleDelete(t._id!)}
-                        className="text-xs"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -377,6 +447,51 @@ export default function HomePage() {
                       <Tooltip formatter={(value) => [`$${value}`, 'Amount']} />
                     </PieChart>
                   </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Spending by Category</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {categoryStats.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <div className="text-4xl mb-2">📊</div>
+                    <div>No categorized transactions</div>
+                    <div className="text-sm">Add categories to your transactions to see this chart</div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <ResponsiveContainer width="100%" height={200}>
+                      <PieChart>
+                        <Pie
+                          data={categoryStats}
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={60}
+                          dataKey="total"
+                        >
+                          {categoryStats.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(value) => [`$${value}`, 'Amount']} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="space-y-2">
+                      {categoryStats.slice(0, 5).map((category) => (
+                        <div key={category.categoryId} className="flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-2">
+                            <span>{category.icon}</span>
+                            <span className="font-medium">{category.name}</span>
+                          </div>
+                          <span className="font-semibold">${category.total.toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </CardContent>
             </Card>

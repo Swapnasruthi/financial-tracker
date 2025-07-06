@@ -2,9 +2,17 @@
 
 A modern web application for tracking and visualizing personal finances built with Next.js frontend and Express.js backend.
 
+
+backend is live on render -- https://financial-tracker-0hqo.onrender.com
+frontend is live on vercel -- https://financial-tracker-cwuq.vercel.app/
+
+
 ## ✨ Features
 
 - **Add/Edit/Delete Transactions**: Full CRUD operations for financial transactions
+- **Predefined Categories**: Rich set of predefined categories with icons for both expenses and income
+- **Category Filtering**: Filter transactions by category to focus on specific spending areas
+- **Category-based Analytics**: Visual breakdown of spending by category with pie charts
 - **Transaction List View**: Clean, responsive list of all transactions with filtering
 - **Monthly Expenses Chart**: Interactive bar chart showing monthly expense trends using Recharts
 - **Income vs Expenses Chart**: Pie chart showing overall financial overview
@@ -100,13 +108,41 @@ The backend will run on [http://localhost:5000](http://localhost:5000)
    - **Date**: Select the transaction date
    - **Description**: Describe what the transaction was for
    - **Type**: Choose between "Expense" or "Income"
+   - **Category**: Select from predefined categories (optional but recommended)
 3. Click "Add Transaction" to save
 
+### Categories
+The app includes a comprehensive set of predefined categories:
+
+**Expense Categories:**
+- 🍽️ Food & Dining
+- 🚗 Transportation
+- 🛍️ Shopping
+- 🎬 Entertainment
+- 🏥 Healthcare
+- 💡 Utilities
+- 🏠 Housing
+- 📚 Education
+- ✈️ Travel
+- 🛡️ Insurance
+- 💰 Taxes
+- 📝 Other Expense
+
+**Income Categories:**
+- 💼 Salary
+- 💻 Freelance
+- 📈 Investment
+- 🏢 Business
+- 🎁 Gift
+- ↩️ Refund
+- 📝 Other Income
+
 ### Managing Transactions
-- **View**: All transactions are displayed in a clean list
+- **View**: All transactions are displayed in a clean list with category badges
+- **Filter**: Use the category filter dropdown to view transactions by specific category
 - **Edit**: Click the "Edit" button next to any transaction
 - **Delete**: Click the "Delete" button next to any transaction
-- **Charts**: Monthly expenses and income vs expenses charts update automatically
+- **Charts**: Monthly expenses, income vs expenses, and category breakdown charts update automatically
 
 ### Features
 - **Real-time Charts**: Charts update automatically when data changes
