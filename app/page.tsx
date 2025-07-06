@@ -6,7 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogTrigger, DialogContent, DialogHeader as DialogH, DialogTitle as DialogT, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Transaction } from '@/types/transaction';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { transactionApi } from '@/lib/api';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { Edit, Trash2, Plus, TrendingUp, TrendingDown } from 'lucide-react';
 
 function getMonthlyExpenses(transactions: Transaction[]) {
   const monthly: { [month: string]: number } = {};
@@ -19,11 +21,26 @@ function getMonthlyExpenses(transactions: Transaction[]) {
   return Object.entries(monthly).map(([month, total]) => ({ month, total }));
 }
 
+function getTransactionStats(transactions: Transaction[]) {
+  const totalIncome = transactions
+    .filter(t => t.type === 'income')
+    .reduce((sum, t) => sum + t.amount, 0);
+  
+  const totalExpenses = transactions
+    .filter(t => t.type === 'expense')
+    .reduce((sum, t) => sum + t.amount, 0);
+  
+  const balance = totalIncome - totalExpenses;
+  
+  return { totalIncome, totalExpenses, balance };
+}
+
 export default function HomePage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [open, setOpen] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [form, setForm] = useState({ amount: '', date: '', description: '', type: 'expense' });
   const [formError, setFormError] = useState('');
 
@@ -32,12 +49,7 @@ export default function HomePage() {
     try {
       setLoading(true);
       setError('');
-      const response = await fetch('/api/transactions');
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to fetch transactions');
-      }
-      const data = await response.json();
+      const data = await transactionApi.getAll();
       setTransactions(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load transactions');
@@ -51,7 +63,13 @@ export default function HomePage() {
     fetchTransactions();
   }, []);
 
-  const handleAdd = async () => {
+  const resetForm = () => {
+    setForm({ amount: '', date: '', description: '', type: 'expense' });
+    setFormError('');
+    setEditingTransaction(null);
+  };
+
+  const handleSubmit = async () => {
     if (!form.amount || !form.date || !form.description) {
       setFormError('All fields are required.');
       return;
@@ -64,51 +82,60 @@ export default function HomePage() {
     
     try {
       setFormError('');
-      const response = await fetch('/api/transactions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      
+      if (editingTransaction) {
+        // Update existing transaction
+        const updatedTransaction = await transactionApi.update({
+          ...editingTransaction,
           amount: Number(form.amount),
           date: form.date,
           description: form.description,
           type: form.type as 'expense' | 'income'
-        })
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to add transaction');
+        });
+        setTransactions(transactions.map(t => 
+          t._id === editingTransaction._id ? updatedTransaction : t
+        ));
+      } else {
+        // Create new transaction
+        const newTransaction = await transactionApi.create({
+          amount: Number(form.amount),
+          date: form.date,
+          description: form.description,
+          type: form.type as 'expense' | 'income'
+        });
+        setTransactions([newTransaction, ...transactions]);
       }
       
-      const newTransaction = await response.json();
-      setTransactions([newTransaction, ...transactions]);
-      setForm({ amount: '', date: '', description: '', type: 'expense' });
+      resetForm();
       setOpen(false);
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Failed to add transaction');
+      setFormError(err instanceof Error ? err.message : 'Failed to save transaction');
       console.error(err);
     }
   };
 
+  const handleEdit = (transaction: Transaction) => {
+    setEditingTransaction(transaction);
+    setForm({
+      amount: transaction.amount.toString(),
+      date: transaction.date,
+      description: transaction.description,
+      type: transaction.type
+    });
+    setOpen(true);
+  };
+
   const handleDelete = async (id: string) => {
     try {
-      const response = await fetch('/api/transactions', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ _id: id })
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to delete transaction');
-      }
-      
+      await transactionApi.delete(id);
       setTransactions(transactions.filter(t => t._id !== id));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete transaction');
       console.error(err);
     }
   };
+
+  const stats = getTransactionStats(transactions);
 
   if (loading) {
     return (
@@ -137,21 +164,68 @@ export default function HomePage() {
             </div>
           </div>
         )}
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Total Income</p>
+                  <p className="text-2xl font-bold text-green-600">${stats.totalIncome.toFixed(2)}</p>
+                </div>
+                <TrendingUp className="h-8 w-8 text-green-600" />
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Total Expenses</p>
+                  <p className="text-2xl font-bold text-red-600">${stats.totalExpenses.toFixed(2)}</p>
+                </div>
+                <TrendingDown className="h-8 w-8 text-red-600" />
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Balance</p>
+                  <p className={`text-2xl font-bold ${stats.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    ${stats.balance.toFixed(2)}
+                  </p>
+                </div>
+                <div className={`h-8 w-8 rounded-full ${stats.balance >= 0 ? 'bg-green-100' : 'bg-red-100'}`}></div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card className="lg:col-span-1">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle>Transactions</CardTitle>
-                <Dialog open={open} onOpenChange={setOpen}>
+                <Dialog open={open} onOpenChange={(isOpen) => {
+                  setOpen(isOpen);
+                  if (!isOpen) resetForm();
+                }}>
                   <DialogTrigger asChild>
-                    <Button size="sm">Add Transaction</Button>
+                    <Button size="sm" className="flex items-center gap-2">
+                      <Plus className="h-4 w-4" />
+                      Add Transaction
+                    </Button>
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-md">
                     <DialogH>
-                      <DialogT>Add New Transaction</DialogT>
+                      <DialogT>{editingTransaction ? 'Edit Transaction' : 'Add New Transaction'}</DialogT>
                     </DialogH>
-                    <form onSubmit={e => { e.preventDefault(); handleAdd(); }} className="space-y-4">
+                    <form onSubmit={e => { e.preventDefault(); handleSubmit(); }} className="space-y-4">
                       <div className="space-y-2">
                         <label className="text-sm font-medium">Amount</label>
                         <Input 
@@ -223,12 +297,20 @@ export default function HomePage() {
                         {t.type === 'expense' ? '-' : '+'}${t.amount.toFixed(2)}
                       </span>
                       <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleEdit(t)}
+                        className="text-xs"
+                      >
+                        <Edit className="h-3 w-3" />
+                      </Button>
+                      <Button 
                         variant="destructive" 
                         size="sm" 
                         onClick={() => handleDelete(t._id!)}
                         className="text-xs"
                       >
-                        Delete
+                        <Trash2 className="h-3 w-3" />
                       </Button>
                     </div>
                   </div>
@@ -237,29 +319,68 @@ export default function HomePage() {
             </CardContent>
           </Card>
           
-          <Card className="lg:col-span-1">
-            <CardHeader>
-              <CardTitle>Monthly Expenses</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {getMonthlyExpenses(transactions).length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <div className="text-4xl mb-2">📈</div>
-                  <div>No expense data to display</div>
-                  <div className="text-sm">Add some expenses to see the chart</div>
-                </div>
-              ) : (
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={getMonthlyExpenses(transactions)}>
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <Tooltip formatter={(value) => [`$${value}`, 'Total']} />
-                    <Bar dataKey="total" fill="#6366f1" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </CardContent>
-          </Card>
+          <div className="lg:col-span-1 space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Monthly Expenses</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {getMonthlyExpenses(transactions).length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <div className="text-4xl mb-2">📈</div>
+                    <div>No expense data to display</div>
+                    <div className="text-sm">Add some expenses to see the chart</div>
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={getMonthlyExpenses(transactions)}>
+                      <XAxis dataKey="month" />
+                      <YAxis />
+                      <Tooltip formatter={(value) => [`$${value}`, 'Total']} />
+                      <Bar dataKey="total" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Income vs Expenses</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {transactions.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <div className="text-4xl mb-2">📊</div>
+                    <div>No data to display</div>
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={200}>
+                    <PieChart>
+                      <Pie
+                        data={[
+                          { name: 'Income', value: stats.totalIncome, color: '#10b981' },
+                          { name: 'Expenses', value: stats.totalExpenses, color: '#ef4444' }
+                        ]}
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={60}
+                        dataKey="value"
+                      >
+                        {[
+                          { name: 'Income', value: stats.totalIncome, color: '#10b981' },
+                          { name: 'Expenses', value: stats.totalExpenses, color: '#ef4444' }
+                        ].map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(value) => [`$${value}`, 'Amount']} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     </div>

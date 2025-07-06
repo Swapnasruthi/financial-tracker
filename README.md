@@ -1,23 +1,26 @@
 # Personal Finance Visualizer
 
-A modern web application for tracking and visualizing personal finances built with Next.js, React, and MongoDB.
+A modern web application for tracking and visualizing personal finances built with Next.js frontend and Express.js backend.
 
 ## ✨ Features
 
 - **Add/Edit/Delete Transactions**: Full CRUD operations for financial transactions
 - **Transaction List View**: Clean, responsive list of all transactions with filtering
 - **Monthly Expenses Chart**: Interactive bar chart showing monthly expense trends using Recharts
+- **Income vs Expenses Chart**: Pie chart showing overall financial overview
 - **Responsive Design**: Works perfectly on desktop, tablet, and mobile devices
 - **Error Handling**: Comprehensive error states and validation
 - **Real-time Updates**: Immediate UI updates when adding/deleting transactions
 - **Form Validation**: Client-side and server-side validation for all inputs
+- **Statistics Cards**: Real-time totals for income, expenses, and balance
 
 ## 🛠️ Tech Stack
 
-- **Frontend**: Next.js 14, React 18, TypeScript
+- **Frontend**: Next.js 14, React 18, TypeScript, Axios
+- **Backend**: Node.js, Express.js, MongoDB
 - **UI Components**: shadcn/ui with Tailwind CSS
 - **Charts**: Recharts for data visualization
-- **Database**: MongoDB (with in-memory fallback for development)
+- **Database**: MongoDB
 - **Styling**: Tailwind CSS with custom design system
 
 ## 🚀 Getting Started
@@ -25,28 +28,68 @@ A modern web application for tracking and visualizing personal finances built wi
 ### Prerequisites
 - Node.js 18+ 
 - npm or yarn
+- MongoDB database
 
-### Installation
+### Quick Start (Recommended)
 
-1. **Clone and install dependencies:**
+**Option 1: Start both servers together**
+```bash
+npm run dev:full
+```
+
+**Option 2: Use the provided scripts**
+- Windows: Double-click `start-dev.bat` or run `.\start-dev.bat`
+- PowerShell: Run `.\start-dev.ps1`
+
+This will start both frontend and backend automatically.
+
+### Manual Setup
+
+#### Frontend Setup
+
+1. **Install frontend dependencies:**
    ```bash
    npm install
    ```
 
-2. **Set up environment variables (optional):**
+2. **Set up environment variables:**
    Create a `.env.local` file in the root:
    ```env
-   MONGODB_URI=your_mongodb_connection_string
+   NEXT_PUBLIC_API_URL=http://localhost:5000
    ```
-   > Note: The app works without MongoDB using in-memory storage for development.
 
-3. **Run the development server:**
+3. **Run the frontend development server:**
    ```bash
    npm run dev
    ```
 
-4. **Open your browser:**
-   Navigate to [http://localhost:3000](http://localhost:3000)
+The frontend will run on [http://localhost:3000](http://localhost:3000)
+
+#### Backend Setup
+
+1. **Navigate to the backend directory:**
+   ```bash
+   cd backend
+   ```
+
+2. **Install backend dependencies:**
+   ```bash
+   npm install
+   ```
+
+3. **Set up environment variables:**
+   Create a `.env` file in the backend directory:
+   ```env
+   MONGODB_URI=mongodb+srv://your-username:your-password@cluster0.mongodb.net/personal-finance-visualizer?retryWrites=true&w=majority
+   PORT=5000
+   ```
+
+4. **Start the backend development server:**
+   ```bash
+   npm run dev
+   ```
+
+The backend will run on [http://localhost:5000](http://localhost:5000)
 
 ## 📊 Usage
 
@@ -61,29 +104,32 @@ A modern web application for tracking and visualizing personal finances built wi
 
 ### Managing Transactions
 - **View**: All transactions are displayed in a clean list
+- **Edit**: Click the "Edit" button next to any transaction
 - **Delete**: Click the "Delete" button next to any transaction
-- **Chart**: Monthly expenses are automatically calculated and displayed
+- **Charts**: Monthly expenses and income vs expenses charts update automatically
 
 ### Features
-- **Real-time Chart**: The monthly expenses chart updates automatically
+- **Real-time Charts**: Charts update automatically when data changes
+- **Statistics Cards**: See total income, expenses, and balance at a glance
 - **Responsive Design**: Works on all screen sizes
 - **Error Handling**: Clear error messages for validation issues
 - **Loading States**: Smooth loading indicators
 
 ## 🔧 API Endpoints
 
-The application includes a complete REST API:
+The Express backend provides a complete REST API:
 
 - `GET /api/transactions` - Fetch all transactions
 - `POST /api/transactions` - Create a new transaction
 - `PUT /api/transactions` - Update an existing transaction
 - `DELETE /api/transactions` - Delete a transaction
+- `GET /health` - Health check endpoint
 
 ### Example API Usage
 
 ```javascript
 // Add a transaction
-const response = await fetch('/api/transactions', {
+const response = await fetch('http://localhost:5000/api/transactions', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
@@ -107,36 +153,50 @@ All UI components are built with shadcn/ui and located in `components/ui/`.
 
 ## 🚀 Deployment
 
-### Vercel (Recommended)
-1. Push your code to GitHub
-2. Connect your repository to Vercel
-3. Add your MongoDB connection string as an environment variable
-4. Deploy!
-
-### Other Platforms
-The app can be deployed to any platform that supports Next.js:
+### Frontend Deployment
+The Next.js frontend can be deployed on platforms like:
+- Vercel (Recommended)
 - Netlify
 - Railway
 - DigitalOcean App Platform
-- AWS Amplify
+
+### Backend Deployment
+The Express backend can be deployed on platforms like:
+- Heroku
+- Railway
+- DigitalOcean App Platform
+- AWS Elastic Beanstalk
+- Google Cloud Run
+
+Make sure to set up the MongoDB connection string and frontend URL in your environment variables.
 
 ## 🔒 Environment Variables
 
+### Frontend (.env.local)
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `MONGODB_URI` | MongoDB connection string | In-memory storage |
+| `NEXT_PUBLIC_API_URL` | Backend API URL | http://localhost:5000 |
+
+### Backend (.env)
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `MONGODB_URI` | MongoDB connection string | Required |
+| `PORT` | Server port | 5000 |
 
 ## 📁 Project Structure
 
 ```
-├── app/                    # Next.js app directory
-│   ├── api/               # API routes
+├── app/                    # Next.js frontend
 │   ├── globals.css        # Global styles
 │   ├── layout.tsx         # Root layout
 │   └── page.tsx           # Main page
+├── backend/               # Express.js backend
+│   ├── server.js          # Express server
+│   ├── package.json       # Backend dependencies
+│   └── README.md          # Backend documentation
 ├── components/            # React components
 │   └── ui/               # shadcn/ui components
-├── lib/                  # Utility functions
+├── lib/                  # Utility functions and API service
 ├── types/                # TypeScript type definitions
 └── public/               # Static assets
 ```
@@ -157,10 +217,11 @@ MIT License - see LICENSE file for details
 
 If you encounter any issues:
 1. Check the browser console for errors
-2. Verify your MongoDB connection (if using)
-3. Ensure all dependencies are installed
-4. Try clearing your browser cache
+2. Verify your MongoDB connection
+3. Ensure both frontend and backend are running
+4. Check the backend logs for API errors
+5. Try clearing your browser cache
 
 ---
 
-**Built with ❤️ using Next.js, React, and shadcn/ui**
+**Built with ❤️ using Next.js, Express.js, React, and shadcn/ui**
