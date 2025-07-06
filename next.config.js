@@ -1,6 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // No experimental options needed for Next.js 14
+  // Enable static exports for better deployment
+  output: 'standalone',
+  // Handle environment variables
+  env: {
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
+  },
 }
 
 module.exports = nextConfig 

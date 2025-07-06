@@ -1,4 +1,4 @@
-import axios, { AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
+import axios, { AxiosResponse, AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { Transaction } from '@/types/transaction';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
@@ -12,7 +12,7 @@ const api = axios.create({
 
 // Add request interceptor for logging
 api.interceptors.request.use(
-  (config: AxiosRequestConfig) => {
+  (config: InternalAxiosRequestConfig) => {
     console.log(`🚀 ${config.method?.toUpperCase()} ${config.url}`);
     return config;
   },
